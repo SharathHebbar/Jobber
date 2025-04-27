@@ -18,3 +18,8 @@ Then run uvicorn
 ```sh
 uvicorn main:app
 ```
+
+Navigate to 
+```sh
+http://localhost:8000/
+```
