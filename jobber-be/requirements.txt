@@ -1,4 +1,5 @@
 duckduckgo-search
-langchain-community
 cohere
 python-dotenv
+uvicorn
+fastapi[all]
