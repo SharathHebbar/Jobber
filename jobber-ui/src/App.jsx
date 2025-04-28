@@ -1,103 +1,170 @@
 // App.jsx
-import React, { useState } from 'react';
-import { Container, TextField, Button, Typography, Box, Card, CardContent, CircularProgress, Snackbar, Alert } from '@mui/material';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
+import {
+  Container,
+  TextField,
+  Button,
+  Typography,
+  Box,
+  Card,
+  CardContent,
+  CircularProgress,
+  Snackbar,
+  Alert,
+  Paper,
+} from '@mui/material';
+
+import SendIcon from '@mui/icons-material/Send';
+import RestartAltIcon from '@mui/icons-material/RestartAlt';
 import ReactMarkdown from 'react-markdown';
 
 function App() {
   const [input, setInput] = useState('');
-  const [markdownResult, setMarkdownResult] = useState('');
+  const [messages, setMessages] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const bottomRef = useRef(null);
 
-  const handleSubmit = async () => {
+  const handleSend = async () => {
     if (!input.trim()) {
-      setError('Input cannot be empty!');
+      setError('Please enter a message.');
       return;
     }
 
+    setMessages((prev) => [...prev, { type: 'user', text: input }]);
+    const userInput = input;
+    setInput('');
     setLoading(true);
-    setError('');
+
     try {
       const response = await fetch('http://localhost:8000/generate', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ user_input: input }),
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ user_input: userInput }),
       });
 
       const data = await response.json();
       if (response.ok) {
-        setMarkdownResult(data.result);
+        setMessages((prev) => [...prev, { type: 'bot', text: data.result }]);
       } else {
-        setError(data.detail || 'Something went wrong.');
+        setError(data.detail || 'Error from server.');
       }
-    } catch (error) {
-      console.error('Error:', error);
-      setError('Server unreachable.');
+    } catch (err) {
+      console.error(err);
+      setError('Cannot connect to server.');
     } finally {
       setLoading(false);
     }
   };
 
+  const handleClearChat = useCallback(() => {
+    setMessages([]);
+  }, []);
+
+  useEffect(() => {
+    bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages, loading]);
+
   return (
-    <Container fixed={true}
-    // maxWidth="lg" sx={{ margin: [1,10]}}
-    // spacing={0}
-    // direction="column"
-    // alignItems="center"
-    // justifyContent="center"
+    <Box
+    sx={{
+        minHeight: '95vh',
+        display: 'flex',
+        flexDirection: 'column',
+        justifyContent: 'center',
+        alignItems: 'center', // This centers items horizontally within the Box
+        backgroundColor: '#f5f5f5',
+        p: 1,
+        width: '99%', // Make the Box full width
+    }}
     >
-      <Card sx={{ p: 3, borderRadius: 4, boxShadow: 3 }}>
-        <Typography variant="h4" gutterBottom align="center">
-          <img src='./assets/Jobber.png' height={40} /> JOBBER: A place to investigate about Jobs
-        </Typography>
-
-        <TextField
-          label="Enter your text"
-          variant="outlined"
-          fullWidth
-          rows={4}
-          value={input}
-          onChange={(e) => setInput(e.target.value)}
-          sx={{ mb: 3 }}
-        />
-
-        <Box textAlign="center">
-          <Button
-            variant="contained"
-            size="large"
-            onClick={handleSubmit}
-            disabled={loading}
-            sx={{ borderRadius: 8, px: 5 }}
+      <Container
+        maxWidth="lg"
+      >
+        <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
+          <Typography 
+            variant="h5"
+            align="inherit"
           >
-            {loading ? <CircularProgress size={26} color="inherit" /> : 'Generate'}
+            🤖 Jobber: A place to investigate about Jobs
+          </Typography>
+        </Box>
+        <Paper sx={{ height: '70vh', overflowY: 'auto', p: 2, mb: 2, borderRadius: 3, boxShadow: 3 }}>
+          {messages.map((msg, idx) => (
+            <Box
+              key={idx}
+              display="flex"
+              justifyContent={msg.type === 'user' ? 'flex-end' : 'flex-start'}
+              my={1}
+            >
+              <Card
+                sx={{
+                  maxWidth: '80%',
+                  p: 2,
+                  backgroundColor: msg.type === 'user' ? '#1976d2' : '#e0e0e0',
+                  color: msg.type === 'user' ? '#fff' : 'inherit',
+                  borderRadius: 4,
+                }}
+              >
+                <CardContent>
+                  {msg.type === 'bot' ? (
+                    <ReactMarkdown>{msg.text}</ReactMarkdown>
+                  ) : (
+                    <Typography>{msg.text}</Typography>
+                  )}
+                </CardContent>
+              </Card>
+            </Box>
+          ))}
+
+          {loading && (
+            <Box display="flex" justifyContent="flex-start" my={1}>
+              <Card sx={{ p: 2, backgroundColor: '#e0e0e0', borderRadius: 4 }}>
+                <CardContent>
+                  <CircularProgress size={20} />
+                </CardContent>
+              </Card>
+            </Box>
+          )}
+
+          <div ref={bottomRef} />
+        </Paper>
+
+        <Box display="flex" gap={1}>
+          <TextField
+            variant="outlined"
+            placeholder="Type your message..."
+            fullWidth
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            onKeyPress={(e) => {
+              if (e.key === 'Enter') {
+                e.preventDefault();
+                handleSend();
+              }
+            }}
+          />
+          <Button startIcon={<RestartAltIcon />}
+          variant="outlined" onClick={handleClearChat} sx={{ borderRadius: 3 }}> 
+          </Button>
+          <Button
+            startIcon={<SendIcon /> }
+            variant="contained"
+            onClick={handleSend}
+            disabled={loading}
+            sx={{ borderRadius: 3 }}
+          >
           </Button>
         </Box>
 
-        <Box mt={5}>
-          <Typography variant="h5" gutterBottom>Search Result:</Typography>
-          <Card variant="outlined" sx={{ p: 3, minHeight: 150, borderRadius: 3 }}>
-            <CardContent>
-              {loading ? (
-                <Typography color="text.secondary">Agent is working...</Typography>
-              ) : markdownResult ? (
-                <ReactMarkdown>{markdownResult}</ReactMarkdown>
-              ) : (
-                <Typography color="text.secondary">Your result will appear here.</Typography>
-              )}
-            </CardContent>
-          </Card>
-        </Box>
-      </Card>
-
-      {/* Error Snackbar */}
-      <Snackbar open={!!error} autoHideDuration={4000} onClose={() => setError('')}>
-        <Alert severity="error" sx={{ width: '100%' }}>
-          {error}
-        </Alert>
-      </Snackbar>
-    </Container>
+        {/* Error Snackbar */}
+        <Snackbar open={!!error} autoHideDuration={4000} onClose={() => setError('')}>
+          <Alert severity="error" sx={{ width: '100%' }}>
+            {error}
+          </Alert>
+        </Snackbar>
+      </Container>
+    </Box>
   );
 }
 

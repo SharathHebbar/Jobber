@@ -20,8 +20,10 @@ class InputData(BaseModel):
 
 @app.post("/generate")
 async def generate_markdown(data: InputData):
-    # Dummy markdown response
     job = Jobber(data.user_input)
+    # return {
+    #     "result": data.user_input
+    # }
     res = job.formalize_result()
     print(res)
     return {

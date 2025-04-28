@@ -1,6 +1,8 @@
 from duckduckgo_search import DDGS
 import os
 import cohere
+from urllib.parse import urlparse
+
 from dotenv import load_dotenv
 
 
@@ -41,6 +43,18 @@ class Jobber:
         self.result = []
         self.answer = ""
         self.references = ""
+
+    def to_sentence_case(self, text):
+        if not text:
+            return ""
+        return text[0].upper() + text[1:].lower()
+    
+    def get_domain_names(self, link):
+        parsed_url = urlparse(link)
+        domain = parsed_url.netloc
+        domain = domain.replace("www.", "").split(".")[0]
+        return domain.capitalize()
+        
     
     def get_search_result(self):
         search_results = search.text(self.question, max_results=5)
@@ -51,9 +65,10 @@ class Jobber:
                     'description': res['body']
                 }
             )
-            start_idx = res['href'].find(".") + 1
-            end_idx = start_idx + res['href'][start_idx: ].find(".")
-            self.references += f"- [{res['href'][start_idx: end_idx]}]({res['href']})\n"
+            self.references += f"- [{self.get_domain_names(res['href'])}]({res['href']})\n"
+            # start_idx = res['href'].find(".") + 1
+            # end_idx = start_idx + res['href'][start_idx: ].find(".")
+            # self.references += f"- [{self.to_sentence_case(res['href'][start_idx: end_idx])}]({res['href']})\n"
             
     # @get_search_result
     def formalize_result(self):
